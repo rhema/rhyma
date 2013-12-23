@@ -1,10 +1,11 @@
 rhyma
 =====
+Rhyma is an effort to create a client side javascript rhyming library. Instead of using a database, Rhyma loads two json dictionaries: the cmu pronunciation dictionary http://www.speech.cs.cmu.edu/cgi-bin/cmudict and a term dictionary (home brewed from Google's n-gram data https://github.com/rhema?tab=repositories).
 
-client side javascript rhyming
+Live demo: http://infovisu.com/sand/rhyma-master/sandbox/rhyme/example.html
+
 
 Note:
-
-To run examples, this must be served from a service.
-I use:
+To run the example in a browser it must be served via HTTP.
+For development, I use:
 python -m SimpleHTTPServer
