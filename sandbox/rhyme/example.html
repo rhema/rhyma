@@ -100,7 +100,7 @@ function loadDictionary()
     cache: true
   });
   $.getScript("/lib/dictionary.js", function(data, textStatus, jqxhr) {
-   $("#header_text").html("Dictionary is loaded. Type or paste text");
+   $("#header_text").html("Dictionary is loaded.");
    dictionary_has_loaded = 1;
   });
 }
@@ -113,7 +113,7 @@ function loadCMUDictionary()
     cache: true
   });
   $.getScript("/lib/cmu_dict.js", function(data, textStatus, jqxhr) {
-   $("#header_text").html("CMU is loaded. Type or paste text");
+   $("#header_text").html("CMU dictionary is loaded.");
    cmu_loaded = 1;
    indexCmuDict();
   });
@@ -316,8 +316,8 @@ $(document).ready(function() {
 </script>
   <title>Test</title>
 </head>
-
-<h1 id="header_text">Loading dictionary... Please wait.</h1>
+<p>For testing rhymes. Type one word per line.</p>
+<h5 id="header_text">Loading dictionary... Please wait.</h5>
 
 <textarea id="words" rows="10" cols="120"></textarea>
 <div id="outspot">
