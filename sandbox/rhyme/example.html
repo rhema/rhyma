@@ -99,7 +99,7 @@ function loadDictionary()
   $.ajaxSetup({
     cache: true
   });
-  $.getScript("/lib/dictionary.js", function(data, textStatus, jqxhr) {
+  $.getScript("../../lib/dictionary.js", function(data, textStatus, jqxhr) {
    $("#header_text").html("Dictionary is loaded.");
    dictionary_has_loaded = 1;
   });
@@ -112,7 +112,7 @@ function loadCMUDictionary()
   $.ajaxSetup({
     cache: true
   });
-  $.getScript("/lib/cmu_dict.js", function(data, textStatus, jqxhr) {
+  $.getScript("../../lib/cmu_dict.js", function(data, textStatus, jqxhr) {
    $("#header_text").html("CMU dictionary is loaded.");
    cmu_loaded = 1;
    indexCmuDict();
