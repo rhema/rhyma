@@ -1,0 +1,326 @@
+<html>
+<head>
+
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"></script>
+<!--<script type="text/javascript" src="dictionary.js"></script>-->
+
+<!-- <script type="text/javascript" src="../../lib/double_metaphone.js"></script>
+<script type="text/javascript" src="../../lib/metaphone.js"></script> -->
+<script>
+    var punct='\\['+ '\\!'+ '\\"'+ '\\#'+ '\\$'+   // since javascript does not
+          '\\%'+ '\\&'+ '\\\''+ '\\('+ '\\)'+  // support POSIX character
+          '\\*'+ '\\+'+ '\\,'+ '\\\\'+ '\\-'+  // classes, we'll need our
+          '\\.'+ '\\/'+ '\\:'+ '\\;'+ '\\<'+   // own version of [:punct:]
+          '\\='+ '\\>'+ '\\?'+ '\\@'+ '\\['+
+          '\\]'+ '\\^'+ '\\_'+ '\\`'+ '\\{'+
+          '\\|'+ '\\}'+ '\\~'+ '\\]';
+
+    var re=new RegExp(     // tokenizer
+       '\\s*'+            // discard possible leading whitespace
+       '('+               // start capture group
+         '\\.{3}'+            // ellipsis (must appear before punct)
+       '|'+               // alternator
+         '\\w+\\-\\w+'+       // hyphenated words (must appear before punct)
+       '|'+               // alternator
+         '\\w+\'(?:\\w+)?'+   // compound words (must appear before punct)
+       '|'+               // alternator
+         '\\w+'+              // other words
+       '|'+               // alternator
+         '['+punct+']'+        // punct
+       ')'                // end capture group
+     );
+
+// grep(ary[,filt]) - filters an array
+//   note: could use jQuery.grep() instead
+// @param {Array}    ary    array of members to filter
+// @param {Function} filt   function to test truthiness of member,
+//   if omitted, "function(member){ if(member) return member; }" is assumed
+// @returns {Array}  all members of ary where result of filter is truthy
+function grep(ary,filt) {
+  var result=[];
+  for(var i=0,len=ary.length;i++<len;) {
+    var member=ary[i]||'';
+    if(filt && (typeof filt === 'Function') ? filt(member) : member) {
+      result.push(member);
+    }
+  }
+  return result;
+}
+
+//var tokens=grep( str.split(re) );   // note: filter function omitted 
+                                     //       since all we need to test 
+                                     //       for is truthiness
+//////above via modified http://stackoverflow.com/questions/6162600/how-do-you-split-a-javascript-string-by-spaces-and-punctuation
+
+
+function show_all_included_words()
+{
+//  var words = //$("#words").val().toLowerCase().split(/\W+/);
+
+  //this splits text into individual words
+  var words = grep( $("#words").val().toLowerCase().split(re) );
+
+  //console.log("1");
+  //console.log(words);
+  
+  var output = "";
+  for(var i in words)
+  {
+  	 var word = words[i];
+     //console.log();
+     output += "<p>" + word + ": "+ getRhymeSet(word).join(" ") + "</p	>";
+     //output += "</br>";
+     /*
+     if(!(words[i].match("^[a-z]+$")))
+        continue;//skip empty
+     var the_idf = Math.log(total_words/(term_dictionary["the"]));
+     var idf = Math.log(total_words/(term_dictionary[words[i]]));
+     idf -= the_idf;
+     
+     //console.log(idf);
+     
+     
+     idf = idf;
+     if(words[i] in term_dictionary)
+     {
+        //console.log("output:"+words[i]+" idf "+idf)
+         output += " <font size='"+idf+"'>"+words[i]+"</font>";//1
+     }*/
+  }
+    
+  $("#outspot").html(output);
+    
+
+}
+
+var dictionary_loaded = 0;
+function loadDictionary()
+{
+  $.ajaxSetup({
+    cache: true
+  });
+  $.getScript("/lib/dictionary.js", function(data, textStatus, jqxhr) {
+   $("#header_text").html("Dictionary is loaded. Type or paste text");
+   dictionary_has_loaded = 1;
+  });
+}
+
+
+var cmu_loaded = 0;
+function loadCMUDictionary()
+{
+  $.ajaxSetup({
+    cache: true
+  });
+  $.getScript("/lib/cmu_dict.js", function(data, textStatus, jqxhr) {
+   $("#header_text").html("CMU is loaded. Type or paste text");
+   cmu_loaded = 1;
+   indexCmuDict();
+  });
+}
+
+var PHONEMES = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B', 'CH', 'D', 'DH', 'EH', 'ER', 'EY', 'F', 'G', 'HH', 'IH', 'IY', 'JH', 'K', 'L', 'M', 'N', 'NG', 'OW', 'OY', 'P', 'R', 'S', 'SH', 'T', 'TH', 'UH', 'UW', 'V', 'W', 'Y', 'Z', 'ZH'];
+
+var indexed_cmu_dict = {};
+
+function add_to_cmu_index(word, phoneme_array)
+{
+	//each node, which is just json, may contain stems, and leafs
+	var selected_node = indexed_cmu_dict;
+	phoneme_array = phoneme_array.slice().reverse();//oops...
+	for(var i in phoneme_array)
+	{
+		var phoneme = phoneme_array[i];
+		//strip stresses
+		phoneme = phoneme.replace(/\d/g,'');
+		//console.log(phoneme);
+		if(phoneme in selected_node)
+		{
+			selected_node = selected_node[phoneme];
+			selected_node['lcount'] += 1;
+			selected_node['inside'].push(word);
+		}
+		else
+		{
+			selected_node[phoneme] = {leafs:[],lcount:1,inside:[word]};
+			selected_node = selected_node[phoneme]; 
+		}
+		
+		//If end is hit, add word s a leaf
+		if(i == phoneme_array.length - 1)
+		{
+			//console.log("the end")
+			selected_node['leafs'].push(word);
+		}
+		
+	}
+}
+
+function indexCmuDict()
+{
+	var MAX_FOR_TEST = 2000000;
+	var i = 0;
+	for(var word in CMU_DICT)
+	{
+		//console.log(word);
+		add_to_cmu_index(word,CMU_DICT[word][0]);//just the first for now.
+		i+=1;
+		if(i>MAX_FOR_TEST)
+			break;
+	}
+}
+
+function TF(word)
+{
+	if(word in term_dictionary)
+	{
+		return Math.log(term_dictionary[word]);
+	}
+	else
+	{
+		return Math.log(50);
+	}
+}
+
+var MAX_RHYMES = 100;
+var MIN_RHYMES = 50;
+var rhyme_set_cache = {};
+function getRhymeSet(word)
+{
+	if(word in CMU_DICT == false)//tbd: find similar enough word
+		return [];
+	var brokenup = CMU_DICT[word][0].slice().reverse();
+	console.log(brokenup);	
+	var node = indexed_cmu_dict;
+	var rhymes = [];
+	if(word in rhyme_set_cache)
+		return rhyme_set_cache[word];
+	var word_syllables = syllables(word);
+	for(var i in brokenup)
+	{
+		var phoneme = brokenup[i].replace(/\d/g,'');
+		//console.log(node);
+		node = node[phoneme];//goes all the way..		
+		console.log(node['inside'].length);
+		console.log(i);
+		console.log(brokenup.length);
+		if(node['inside'].length < MAX_RHYMES || i == brokenup.length-1)
+		{
+			console.log("I shall return");
+			if(node['inside'].length > MIN_RHYMES)
+			{
+				rhymes = node['inside'];
+			}
+			rhymes = rhymes.slice();//deep copy
+			
+			
+			//some sorting  by fitness function
+			rhymes.sort(function(x, y){ 
+				
+				var x_points=0;
+				var y_points=0;
+				x_points += -1 * TF(x);
+				y_points += -1 * TF(y);
+				
+				//smaller is better
+				var tune = 30;
+				x_points += -20 + Math.abs(word_syllables - syllables(x))*5; 
+				y_points += -20 + Math.abs(word_syllables - syllables(y))*5; 
+				
+				//similarity in number of vowels?
+				return x_points - y_points; 
+				});
+			
+			//only top MAX_RHYMES
+			rhymes = rhymes.slice(0,Math.min(rhymes.length,MAX_RHYMES));
+			rhyme_set_cache[word] = rhymes;
+			return rhymes;
+		}
+		else
+		{
+			rhymes = node["inside"];//by reference...
+		}
+	}
+	console.log("If you can read this, you have gone too far.");
+}
+
+
+//////**** FROM THE GREAT node-rhyme project. 
+
+var self = {}; //
+var dict = {}; //
+    
+function pronounce (word)
+{
+    return CMU_DICT[word];
+};
+
+function syllables(word)
+{
+	var prose = pronounce(word);
+    return prose && prose[0].filter(function (ph) {
+        return ph.match(/^[AEIOU]/);
+    }).length;
+}
+
+
+function rhyme (word)
+{
+    if (!CMU_DICT[word]) return [];
+    
+    var xs = CMU_DICT[word].reduce(function (acc, w) {
+        acc[active(w)] = true;
+        return acc;
+    }, {});
+    
+    var rhymes = [];
+    Object.keys(CMU_DICT).forEach(function (w) {
+        if (w === word) return;
+        
+        var some = CMU_DICT[w].some(function (p) {
+            return xs[active(p)];
+        });
+        if (some) rhymes.push(w);
+    }, []);
+    return rhymes;
+}
+
+
+function active (ws) {
+    // active rhyming region: slice off the leading consonants
+    for (
+        var i = 0;
+        i < ws.length && ws[i].match(/^[^AEIOU]/i);
+        i++
+    );
+    return ws.slice(i).join(' ');
+}
+
+//////**** FROM THE GREAT node-rhyme project.
+
+$(document).ready(function() {
+  loadDictionary();
+  loadCMUDictionary();
+  $("#words").keyup( function(event) {
+  if(dictionary_has_loaded)
+  {
+    show_all_included_words();
+  }
+  //console.log("typed");
+  
+  });
+  
+  
+});
+
+</script>
+  <title>Test</title>
+</head>
+
+<h1 id="header_text">Loading dictionary... Please wait.</h1>
+
+<textarea id="words" rows="10" cols="120"></textarea>
+<div id="outspot">
+</div>
+
+</html>
